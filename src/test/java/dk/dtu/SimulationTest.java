@@ -24,8 +24,9 @@ public class SimulationTest {
                 // Positive test: Restock 50 Apples (should succeed)
                 store1.sendRequest("Apples", 50, "Restocking");
                 
-                // Negative test: Restock 1000 Oranges (should fail due to non-existent product)
-                store1.sendRequest("Oranges", 1000, "Restocking");
+                // Negative test: Restock 1000 Oranges (should success, even if not such a product, but it creats)
+                store1.sendRequest("Oranges", 
+                1000, "Restocking");
             } catch (Exception e) {
                 e.printStackTrace();
             }
