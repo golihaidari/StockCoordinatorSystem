@@ -15,6 +15,6 @@ public class SpaceServer {
         URI uri = new URI("tcp://localhost:9001/?keep");
         repository.addGate(uri.toString());
 
-        System.out.println("Space server is running at " + uri);
+        System.out.println("[Space_Server] : is running at [" + uri+ "]");
     }
 }

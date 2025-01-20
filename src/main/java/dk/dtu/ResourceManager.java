@@ -11,13 +11,14 @@ public class ResourceManager {
         this.requestChannel = requestChannel;
         this.responseChannel = responseChannel;
         this.productSpace = ProductSpace.getInstance();  // Singleton pattern for product space
+        System.out.println("[Resource_Manager] running...");
     }
 
     public void processRequests() {
         new Thread(() -> {
             try {
                 while (true) {
-                    // Receive a request from Store
+                    // Wait and receive a request from Store
                     Object[] request = requestChannel.get(
                         new FormalField(String.class),  // Store name
                         new FormalField(String.class),  // Product name
@@ -26,28 +27,30 @@ public class ResourceManager {
                         new FormalField(String.class)   // Request ID
                     );
 
-                    String store = (String) request[0];
+                    String storeName = (String) request[0];
                     String product = (String) request[1];
                     int quantity = (Integer) request[2];
                     String command = (String) request[3];
                     String requestId = (String) request[4]; // Extract requestId
 
+                    System.out.println("[ResourceManager] <- GET:  request("+ storeName +", "+ product + ", "+ quantity +", "+ command+ ", " +requestId +").");
+                    printProduct(storeName, product);
+                    
                     boolean success = false;
 
-                    // Process the request based on the command
-                    switch (command) {
-                        case "Requesting":
-                            success = checkAndAllocateStock(store, product, quantity);
-                            break;
-                        case "Restocking":
-                            success = restockProduct(store, product, quantity);
-                            break;
-                        default:
-                            System.out.println("[ResourceManager] Unknown command: " + command);
+                    System.out.print("@[ResourceManager] start " + command + "...");
+                    // Process the request based on the command: allocation or restocking
+                    switch (command){
+                        case "Requesting" -> success = checkAndAllocateStock(storeName, product, quantity);
+                        case "Restocking" -> success = restockProduct(storeName, product, quantity);  
+                        default ->  System.out.println("[ResourceManager] : " + command + " is and invalid command.");
                     }
+                    
+                    printProduct(storeName, product);
 
+                    System.out.println("[ResourceManager] -> SEND : response("+ storeName+ ", "+ product +", "+(success ? "Approved" : "Denied") + "," + requestId+")");
                     // Send the response back to the Store with the requestId
-                    responseChannel.put(store, product, success ? "Approved" : "Denied", requestId);
+                    responseChannel.put(storeName, product, success ? "Approved" : "Denied", requestId);
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -66,15 +69,15 @@ public class ResourceManager {
             int currentStock = (Integer) productTuple[2];
             if (currentStock >= quantity) {
                 productSpace.put(store, product, currentStock - quantity);
-                System.out.println("[ResourceManager] Allocated " + quantity + " of " + product);
+                System.out.println(" Allocation Succeed : (" + store + ", " + product + ", " + quantity+")");
                 return true;
             } else {
                 productSpace.put(store, product, currentStock);
-                System.out.println("[ResourceManager] Not enough stock for " + product);
+                System.out.println(" Allocation Faild : Due to not  enough "+ product + " at "+ store+". (requestQuantity " + quantity + " > currentStock " + currentStock +")");
                 return false;
             }
         } else {
-            System.out.println("[ResourceManager] Product " + product + " does not exist.");
+            System.out.println(" Allocation Faild : Due to not existance of " + product + " at " +store);
             return false;
         }
     }
@@ -90,11 +93,25 @@ public class ResourceManager {
             int currentStock = (Integer) productTuple[2];
             productSpace.get(new ActualField(store), new ActualField(product), new FormalField(Integer.class));
             productSpace.put(store, product, currentStock + quantity);
+            
+            System.out.println(" Restoking Succeed : Restocked(" + quantity + " " + product + " at " + store+ ")");
         } else {
             productSpace.put(store, product, quantity);
+            System.out.println(" Restoking Succeed : Created(" + quantity + " " + product + " at" + store+")");
         }
-        System.out.println("[ResourceManager] Restocked " + quantity + " of " + product);
+       
         return true;
+    }
+
+    private void printProduct(String storeName, String product) throws InterruptedException {
+        Object[] productTuple = productSpace.queryp(
+                new ActualField(storeName),
+                new ActualField(product),
+                new FormalField(Integer.class)
+            );
+        int currentStock = (Integer) productTuple[2];
+        
+        System.out.println("@[ResourceManager] Current ProductState (" + storeName + ", " + product + ", "+ currentStock +")");
     }
 
     public static void main(String[] args) throws Exception {
@@ -103,7 +120,5 @@ public class ResourceManager {
 
         ResourceManager resourceManager = new ResourceManager(requestChannel, responseChannel);
         resourceManager.processRequests();
-
-        System.out.println("ResourceManager is running and processing requests.");
     }
 }
