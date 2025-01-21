@@ -28,12 +28,16 @@ public class ProductSpace{
     //Initialize the product space with dummy products.
     private static void initializeProducts() throws Exception {
         productSpace.put("Store1", "Apples", 10);
+        productSpace.put("Store1", "Oranges", 10);
+
         productSpace.put("Store2", "Apples", 10);
-        productSpace.put("Store3", "Apples", 10);
+        productSpace.put("Store2", "Oranges", 10);
         
-        productSpace.put("Store1", "Oranges", 20);
-        productSpace.put("Store2", "Oranges", 20);
-        productSpace.put("Store3", "Oranges", 20);
+        productSpace.put("Store3", "Apples", 10);
+        productSpace.put("Store3", "Oranges", 10);
+        
+        productSpace.put("Store4", "Apples", 10);
+        productSpace.put("Store4", "Oranges", 10);
 
         System.out.println("@[ProductSpace] Dummy data is intialized:");
         printData();

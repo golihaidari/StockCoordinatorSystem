@@ -1,0 +1,64 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "IntegrationTest",
+            "request": "launch",
+            "mainClass": "dk.dtu.IntegrationTest",
+            "projectName": "project_02148"
+        },
+        {
+            "type": "java",
+            "name": "ResourceManager",
+            "request": "launch",
+            "mainClass": "dk.dtu.ResourceManager",
+            "projectName": "project_02148"
+        },
+        {
+            "type": "java",
+            "name": "SimulationTest",
+            "request": "launch",
+            "mainClass": "dk.dtu.SimulationTest",
+            "projectName": "project_02148"
+        },
+        {
+            "type": "java",
+            "name": "SpaceServer",
+            "request": "launch",
+            "mainClass": "dk.dtu.SpaceServer",
+            "projectName": "project_02148"
+        },
+        {
+            "type": "java",
+            "name": "Store",
+            "request": "launch",
+            "mainClass": "dk.dtu.Store",
+            "projectName": "project_02148"
+        },
+        {
+            "type": "java",
+            "name": "StoreGUI",
+            "request": "launch",
+            "mainClass": "dk.dtu.StoreGUI",
+            "projectName": "project_02148"
+        },
+        {
+            "type": "java",
+            "name": "SystemSimulationTest",
+            "request": "launch",
+            "mainClass": "dk.dtu.SystemSimulationTest",
+            "vmArgs": "-ea",  // Enable assertions
+            "projectName": "project_02148"
+        }
+    ]
+}

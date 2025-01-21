@@ -2,119 +2,150 @@ package dk.dtu;
 
 import org.jspace.*;
 
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class ResourceManager {
     private final Space requestChannel;
     private final Space responseChannel;
     private final Space productSpace;
+    private final TokenManager tokenManager;
+    private final ExecutorService executorService;
 
     public ResourceManager(Space requestChannel, Space responseChannel) {
         this.requestChannel = requestChannel;
         this.responseChannel = responseChannel;
-        this.productSpace = ProductSpace.getInstance();  // Singleton pattern for product space
-        System.out.println("[Resource_Manager] running...");
+        this.productSpace = ProductSpace.getInstance(); // Singleton pattern
+        this.tokenManager = TokenManager.getInstance(); // Singleton pattern
+        this.executorService = Executors.newFixedThreadPool(10); // Thread pool for efficiency
+        System.out.println("[ResourceManager] Running...");
     }
 
     public void processRequests() {
         new Thread(() -> {
             try {
                 while (true) {
-                    // Wait and receive a request from Store
                     Object[] request = requestChannel.get(
-                        new FormalField(String.class),  // Store name
-                        new FormalField(String.class),  // Product name
+                        new FormalField(String.class), // Store name
+                        new FormalField(String.class), // Product name
                         new FormalField(Integer.class), // Quantity
-                        new FormalField(String.class),  // Command (Requesting/Restocking)
-                        new FormalField(String.class)   // Request ID
+                        new FormalField(String.class), // Command
+                        new FormalField(String.class)  // Request ID
                     );
 
-                    String storeName = (String) request[0];
-                    String product = (String) request[1];
-                    int quantity = (Integer) request[2];
-                    String command = (String) request[3];
-                    String requestId = (String) request[4]; // Extract requestId
-
-                    System.out.println("[ResourceManager] <- GET:  request("+ storeName +", "+ product + ", "+ quantity +", "+ command+ ", " +requestId +").");
-                    printProduct(storeName, product);
-                    
-                    boolean success = false;
-
-                    System.out.print("@[ResourceManager] start " + command + "...");
-                    // Process the request based on the command: allocation or restocking
-                    switch (command){
-                        case "Requesting" -> success = checkAndAllocateStock(storeName, product, quantity);
-                        case "Restocking" -> success = restockProduct(storeName, product, quantity);  
-                        default ->  System.out.println("[ResourceManager] : " + command + " is and invalid command.");
-                    }
-                    
-                    printProduct(storeName, product);
-
-                    System.out.println("[ResourceManager] -> SEND : response("+ storeName+ ", "+ product +", "+(success ? "Approved" : "Denied") + "," + requestId+")");
-                    // Send the response back to the Store with the requestId
-                    responseChannel.put(storeName, product, success ? "Approved" : "Denied", requestId);
+                    executorService.submit(() -> handleRequest(request));
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.err.println("[ResourceManager] Error: " + e.getMessage());
+                Thread.currentThread().interrupt();
             }
         }).start();
     }
 
-    private synchronized boolean checkAndAllocateStock(String store, String product, int quantity) throws InterruptedException {
-        Object[] productTuple = productSpace.getp(
-            new ActualField(store), 
-            new ActualField(product), 
+    private void handleRequest(Object[] request) {
+        String storeName = (String) request[0];
+        String product = (String) request[1];
+        int quantity = (Integer) request[2];
+        String command = (String) request[3];
+        String requestId = (String) request[4];
+
+        System.out.println("[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] <- GET: request(" + storeName + ", " + product + ", " + quantity + ", " + command + ", " + requestId + ").");
+        try {
+            tokenManager.acquireToken(storeName, product); // Acquire token
+            try {
+                boolean success = false;
+                System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] start " + command + "...");
+
+                switch (command) {
+                    case "Requesting" -> success = checkAndAllocateStock(storeName, product, quantity);
+                    case "Restocking" -> success = restockProduct(storeName, product, quantity);
+                    default -> System.out.println("[ResourceManager] Invalid command: " + command);
+                }
+
+                printProduct(storeName, product);
+                System.out.println("[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] -> SEND: response(" + storeName + ", " + product + ", " + (success ? "Approved" : "Denied") + ", " + requestId + ")");
+                responseChannel.put(storeName, product, success ? "Approved" : "Denied", requestId);
+            } finally {
+                tokenManager.releaseToken(storeName, product); // Release token
+            }
+        } catch (InterruptedException e) {
+            System.err.println("[ResourceManager] Error: " + e.getMessage());
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private boolean checkAndAllocateStock(String store, String product, int quantity) throws InterruptedException {
+        Object[] productTuple = productSpace.queryp(
+            new ActualField(store),
+            new ActualField(product),
             new FormalField(Integer.class)
         );
-    
+
         if (productTuple != null) {
-            int currentStock = (Integer) productTuple[2];
+            Object[] obj = productSpace.get(
+                new ActualField(store),
+                new ActualField(product),
+                new FormalField(Integer.class)
+            );
+            int currentStock = (Integer) obj[2];
+
             if (currentStock >= quantity) {
                 productSpace.put(store, product, currentStock - quantity);
-                System.out.println(" Allocation Succeed : (" + store + ", " + product + ", " + quantity+")");
+                System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "]Allocation Succeed: (" + store + ", " + product + ", " + quantity + ")");
                 return true;
             } else {
                 productSpace.put(store, product, currentStock);
-                System.out.println(" Allocation Faild : Due to not  enough "+ product + " at "+ store+". (requestQuantity " + quantity + " > currentStock " + currentStock +")");
+                System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "]Allocation Failed: Not enough " + product + " at " + store + ". (Requested: " + quantity + ", Available: " + currentStock + ")");
                 return false;
             }
         } else {
-            System.out.println(" Allocation Faild : Due to not existance of " + product + " at " +store);
+            System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "]Allocation Failed: Product " + product + " does not exist at " + store);
             return false;
         }
     }
 
-    public synchronized boolean restockProduct(String store, String product, int quantity) throws InterruptedException {
+    private boolean restockProduct(String store, String product, int quantity) throws InterruptedException {
         Object[] productTuple = productSpace.queryp(
-            new ActualField(store), 
-            new ActualField(product), 
+            new ActualField(store),
+            new ActualField(product),
             new FormalField(Integer.class)
         );
 
         if (productTuple != null) {
-            int currentStock = (Integer) productTuple[2];
-            productSpace.get(new ActualField(store), new ActualField(product), new FormalField(Integer.class));
+            Object[] obj = productSpace.get(
+                new ActualField(store),
+                new ActualField(product),
+                new FormalField(Integer.class)
+            );
+            int currentStock = (Integer) obj[2];
             productSpace.put(store, product, currentStock + quantity);
-            
-            System.out.println(" Restoking Succeed : Restocked(" + quantity + " " + product + " at " + store+ ")");
+            System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] Restocking Succeed: Restocked(" + quantity + " " + product + " at " + store + ")");
         } else {
             productSpace.put(store, product, quantity);
-            System.out.println(" Restoking Succeed : Created(" + quantity + " " + product + " at" + store+")");
+            System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "]Restocking Succeed: Created(" + quantity + " " + product + " at " + store + ")");
         }
-       
+
         return true;
     }
 
     private void printProduct(String storeName, String product) throws InterruptedException {
         Object[] productTuple = productSpace.queryp(
-                new ActualField(storeName),
-                new ActualField(product),
-                new FormalField(Integer.class)
-            );
-        int currentStock = (Integer) productTuple[2];
-        
-        System.out.println("@[ResourceManager] Current ProductState (" + storeName + ", " + product + ", "+ currentStock +")");
+            new ActualField(storeName),
+            new ActualField(product),
+            new FormalField(Integer.class)
+        );
+
+        if (productTuple != null) {
+            int currentStock = (Integer) productTuple[2];
+            System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] Current ProductState (" + storeName + ", " + product + ", " + currentStock + ")");
+        } else {
+            System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] Product (" + storeName + ", " + product + ") does not exist in the product space.");
+        }
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws UnknownHostException, IOException {
         RemoteSpace requestChannel = new RemoteSpace("tcp://localhost:9001/requestChannel?keep");
         RemoteSpace responseChannel = new RemoteSpace("tcp://localhost:9001/responseChannel?keep");
 

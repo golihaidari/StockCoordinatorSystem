@@ -6,7 +6,7 @@ import java.util.Scanner;
 import java.util.UUID;
 
 public class Store {
-    private final String name;
+    public final String name;
     private final Space requestChannel;
     private final Space responseChannel;
 
@@ -16,12 +16,11 @@ public class Store {
         this.responseChannel = responseChannel;
     }
 
-    public void sendRequest(String product, int quantity, String command) {
+    public String sendRequest(String product, int quantity, String command) {
         try {
             // Generate a unique request ID for each request
             String requestId = UUID.randomUUID().toString().substring(0,4);
     
-           // Send the request to the request channel asynchronously
             System.out.println("[" + name + "] -> SEND:  request("+ product + ", "+ quantity +", "+ command+ ", " +requestId +").");
        
             // Send a request to the ResourceManager with the requestId
@@ -32,24 +31,30 @@ public class Store {
                 new FormalField(String.class),  // Store name
                 new FormalField(String.class),  // Product name
                 new FormalField(String.class),  // Response (approved/denied)
-                new ActualField(requestId)   // Request ID
+                new ActualField(requestId)   // Request ID to ensure retreiving the corresponded response 
             );
     
-            // Ensure that the response corresponds to the correct RequestID
+            // 
             String rName = (String) response[0];
             String rProduct = (String) response[1];
             String rStatus = (String) response[2];
             String responseRequestId = (String) response[3];
 
-            System.out.println("[" + name + "] <- GET: response("+rName+ ", "+ rProduct + ", "+ rStatus + ", "+ responseRequestId + ")");
-           
-            // Print the response
-            if (!responseRequestId.equals(requestId)) { 
-                System.out.println("@[Store] surprise!!!! Mismatched RequestID: " + responseRequestId +". Expected: " + requestId );
+            // Format the response message
+            String responseMessage = "[" + name + "] <- GET: response(" + rName + ", " + rProduct + ", " + rStatus + ", " + responseRequestId + ")";
+
+            // Ensure that the response corresponds to the correct RequestID
+            if (!responseRequestId.equals(requestId)) {
+                responseMessage += "\n@[Store] Warning: Mismatched RequestID. Expected: " + requestId + ", but got: " + responseRequestId;
             }
-    
+
+            System.out.println(responseMessage);
+
+            return rStatus; 
+
         } catch (InterruptedException e) {
             e.printStackTrace();
+            return e.getMessage();
         }
     }
 
@@ -91,7 +96,7 @@ public class Store {
         scanner.close();
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception{
         RemoteSpace requestChannel = new RemoteSpace("tcp://localhost:9001/requestChannel?keep");
         RemoteSpace responseChannel = new RemoteSpace("tcp://localhost:9001/responseChannel?keep");
         Store store = new Store("Store1", requestChannel, responseChannel);
