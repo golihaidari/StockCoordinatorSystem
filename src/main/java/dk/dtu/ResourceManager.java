@@ -1,11 +1,14 @@
 package dk.dtu;
 
-import org.jspace.*;
-
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import org.jspace.ActualField;
+import org.jspace.FormalField;
+import org.jspace.RemoteSpace;
+import org.jspace.Space;
 
 public class ResourceManager {
     private final Space requestChannel;
@@ -54,6 +57,8 @@ public class ResourceManager {
         System.out.println("[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] <- GET: request(" + storeName + ", " + product + ", " + quantity + ", " + command + ", " + requestId + ").");
         try {
             tokenManager.acquireToken(storeName, product); // Acquire token
+            System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] Token acuired by requestId " + requestId + ".");
+        
             try {
                 boolean success = false;
                 System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] start " + command + "...");
@@ -69,6 +74,7 @@ public class ResourceManager {
                 responseChannel.put(storeName, product, success ? "Approved" : "Denied", requestId);
             } finally {
                 tokenManager.releaseToken(storeName, product); // Release token
+                System.out.println("@[ResourceManager][Thread-" + Thread.currentThread().threadId() + "] Token released by requestId " + requestId + ".");
             }
         } catch (InterruptedException e) {
             System.err.println("[ResourceManager] Error: " + e.getMessage());

@@ -1,12 +1,17 @@
 package dk.dtu;
 
+import org.jspace.RemoteSpace;
+
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-import org.jspace.RemoteSpace;
 
 public class StoreGUI extends Application {
     private final Store store; // Store instance for backend communication
@@ -99,7 +104,7 @@ public class StoreGUI extends Application {
     }
 
     public static void main(String[] args) {
-        storeName = (args.length > 0) ? args[0] : "Store1";
+        storeName = (args.length > 0) ? args[0] : "Store2";
 
         launch(args);
     }

@@ -6,6 +6,27 @@
     "configurations": [
         {
             "type": "java",
+            "name": "SystemSimulationTest",
+            "request": "launch",
+            "mainClass": "dk.dtu.SystemSimulationTest",
+            "projectName": "StockCoordinationSystem"
+        },
+        {
+            "type": "java",
+            "name": "ResourceManager",
+            "request": "launch",
+            "mainClass": "dk.dtu.ResourceManager",
+            "projectName": "StockCoordinationSystem"
+        },
+        {
+            "type": "java",
+            "name": "SpaceServer",
+            "request": "launch",
+            "mainClass": "dk.dtu.SpaceServer",
+            "projectName": "StockCoordinationSystem"
+        },
+        {
+            "type": "java",
             "name": "Current File",
             "request": "launch",
             "mainClass": "${file}"
@@ -57,7 +78,7 @@
             "name": "SystemSimulationTest",
             "request": "launch",
             "mainClass": "dk.dtu.SystemSimulationTest",
-            "vmArgs": "-ea",  // Enable assertions
+            "vmArgs": "-ea",
             "projectName": "project_02148"
         }
     ]
